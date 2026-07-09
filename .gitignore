@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend build
+node_modules/
+
+# Logs / runtime
+*.log
+.xsession-errors*
+
+# CAN captures (add specific ones intentionally)
+capture/*.log
+capture/*.asc
+
+# OS
+.DS_Store

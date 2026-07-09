@@ -1,0 +1,43 @@
+VERSION "1.0.0"
+
+NS_ :
+
+BS_:
+
+BU_: HYPER9 PANDA
+
+CM_ "Hyper 9 Motor Controller CAN Database - CANOpen (ISO 11898-2) - Little-endian - 1986 Ford Ranger EV Conversion";
+
+BO_ 385 HYPER9_STATUS: 8 HYPER9
+  SG_ VEHICLE_SPEED : 0|16@1- (0.1,0) [-3276.8|3276.7] "km/h" PANDA
+  SG_ BATTERY_SOC : 16|8@1+ (1,0) [0|100] "%" PANDA
+  SG_ SYSTEM_FLAGS : 24|16@1+ (1,0) [0|65535] "" PANDA
+  SG_ FAULT_CODE : 40|8@1+ (1,0) [0|150] "" PANDA
+
+BO_ 386 HYPER9_POWER: 8 HYPER9
+  SG_ DC_BUS_VOLTAGE : 0|16@1- (0.1,0) [-3276.8|3276.7] "V" PANDA
+  SG_ DC_BUS_CURRENT : 16|16@1- (0.1,0) [-3276.8|3276.7] "A" PANDA
+  SG_ MOTOR_CURRENT : 32|16@1- (0.1,0) [-3276.8|3276.7] "A" PANDA
+
+BO_ 387 HYPER9_MOTOR: 8 HYPER9
+  SG_ MOTOR_RPM : 0|16@1- (1,0) [-32768|32767] "rpm" PANDA
+  SG_ MOTOR_TEMP : 16|8@1+ (1,-40) [-40|215] "degC" PANDA
+  SG_ INVERTER_TEMP : 24|8@1+ (1,-40) [-40|215] "degC" PANDA
+  SG_ THROTTLE_REQUEST : 32|8@1- (1,0) [-100|100] "%" PANDA
+  SG_ MOTOR_TORQUE : 40|16@1- (1,0) [-100|100] "%" PANDA
+
+BO_ 388 HYPER9_EXTENDED: 8 HYPER9
+  SG_ FAULT_LEVEL : 0|8@1+ (1,0) [0|4] "" PANDA
+  SG_ MOTOR_FLAGS : 8|16@1+ (1,0) [0|65535] "" PANDA
+
+CM_ BO_ 385 "TPDO 1: Primary vehicle status (20ms rate)";
+CM_ BO_ 386 "TPDO 2: Power data (100ms rate)";
+CM_ BO_ 387 "TPDO 3: Motor data (50ms rate)";
+CM_ BO_ 388 "TPDO 4: Extended status (200ms rate)";
+
+CM_ SG_ 385 SYSTEM_FLAGS "BIT0: SoC Low Traction, BIT2: Reverse, BIT3: Forward, BIT4: Park Brake, BIT5: Pedal Brake, BIT6: Overtemp, BIT9: Running, BIT10: Traction Enabled, BIT14: Precharging, BIT15: Contactor Closing";
+
+VAL_ 385 FAULT_CODE 0 "Ready" 1 "Blocking" 2 "Stopping" 3 "Limiting" 4 "Warning" ;
+
+VAL_ 388 FAULT_LEVEL 0 "Ready" 1 "Blocking" 2 "Stopping" 3 "Limiting" 4 "Warning" ;
+

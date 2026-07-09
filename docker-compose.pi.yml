@@ -1,0 +1,11 @@
+services:
+  dashboard:
+    build: .
+    network_mode: host  # Required for SocketCAN (can0) access
+    privileged: true     # Required for terminal PTY access
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./dbc:/app/dbc
+    environment:
+      - TERM=xterm-256color
+    restart: unless-stopped

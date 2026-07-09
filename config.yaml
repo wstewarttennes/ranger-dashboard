@@ -1,0 +1,35 @@
+# Ranger Dashboard Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8088
+
+can:
+  # Use "virtual" for macOS development (in-process mock)
+  # Use "vcan0" for Linux with virtual CAN (testing)
+  # Use "can0" for real CAN HAT on Pi
+  interface: "can0"
+  bitrate: 500000
+  # DBC files to load
+  dbc_files:
+    - "dbc/hyper9.dbc"
+    - "dbc/thunderstruck_mcu.dbc"
+
+comma:
+  # IP address of comma 4 on local network
+  host: "192.168.1.100"
+  port: 5001
+  # Which cameras to request
+  cameras:
+    - "road"
+  # Which cereal services to bridge
+  services:
+    - "carState"
+    - "selfdriveState"
+    - "deviceState"
+
+display:
+  # Target update rate for WebSocket push (Hz)
+  update_rate: 20
+  # Units: "metric" or "imperial"
+  units: "imperial"

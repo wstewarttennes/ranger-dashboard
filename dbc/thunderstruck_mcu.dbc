@@ -1,0 +1,52 @@
+VERSION "1.0.0"
+
+NS_ :
+
+BS_:
+
+BU_: MCU DASHBOARD
+
+CM_ "Thunderstruck MCU v1.0 BMS CAN Database - ZEVCCS Protocol - 500kbps CAN2";
+CM_ "Enable on MCU serial: sys> enable zevccs can2";
+CM_ "MCU CAN2 baud rate: sys> set can2br 500";
+CM_ "6S Tesla Model S pack, LTC12 architecture, BMSS24 boards";
+
+BO_ 849 MCU_BMS_LIMITS: 8 MCU
+ SG_ CHARGE_VOLTAGE_LIMIT : 0|16@1+ (0.1,0) [0|600] "V" DASHBOARD
+ SG_ CHARGE_CURRENT_LIMIT : 16|16@1+ (0.1,0) [0|600] "A" DASHBOARD
+ SG_ DISCHARGE_CURRENT_LIMIT : 32|16@1+ (0.1,0) [0|600] "A" DASHBOARD
+ SG_ DISCHARGE_VOLTAGE_LIMIT : 48|16@1+ (0.1,0) [0|600] "V" DASHBOARD
+
+BO_ 853 MCU_BMS_SOC: 8 MCU
+ SG_ BATTERY_SOC : 0|8@1+ (1,0) [0|100] "%" DASHBOARD
+
+BO_ 854 MCU_BMS_STATUS: 6 MCU
+ SG_ PACK_VOLTAGE : 0|16@1+ (0.1,0) [0|600] "V" DASHBOARD
+ SG_ PACK_CURRENT : 16|16@1- (0.1,0) [-3276.8|3276.7] "A" DASHBOARD
+ SG_ PACK_TEMPERATURE : 32|16@1- (1,0) [-40|120] "degC" DASHBOARD
+
+BO_ 858 MCU_BMS_ERRORS: 7 MCU
+ SG_ ERROR_PROTOCOL_ID : 0|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ ERROR_TARGET_VOLTAGE : 8|16@1+ (0.1,0) [0|600] "V" DASHBOARD
+ SG_ ERROR_TARGET_CURRENT : 24|8@1+ (1,0) [0|255] "A" DASHBOARD
+ SG_ FAULT_FLAGS : 32|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ STATUS_FLAGS : 40|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ ERROR_SOC : 48|8@1+ (1,0) [0|100] "%" DASHBOARD
+
+BO_ 859 MCU_BMS_STATUS2: 7 MCU
+ SG_ STATUS2_PROTOCOL_ID : 0|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ STATUS2_TARGET_VOLTAGE : 8|16@1+ (0.1,0) [0|600] "V" DASHBOARD
+ SG_ STATUS2_TARGET_CURRENT : 24|8@1+ (1,0) [0|255] "A" DASHBOARD
+ SG_ STATUS2_FAULT_FLAGS : 32|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ STATUS2_STATUS_FLAGS : 40|8@1+ (1,0) [0|255] "" DASHBOARD
+ SG_ STATUS2_SOC : 48|8@1+ (1,0) [0|100] "%" DASHBOARD
+
+CM_ BO_ 849 "BMS charge/discharge limits. 0x351, 100ms broadcast. Fields: charge voltage/current limits, discharge current/voltage limits.";
+CM_ BO_ 853 "Battery state of charge. 0x355, 100ms broadcast.";
+CM_ BO_ 854 "Pack summary status. 0x356, 100ms broadcast. Pack voltage, current (signed), and highest thermistor temperature.";
+CM_ BO_ 858 "BMS error reporting. 0x35a, 100ms broadcast. Target voltage/current during fault, fault and status flags.";
+CM_ BO_ 859 "BMS extended status. 0x35b, 100ms broadcast. Secondary status with target voltage/current and flags.";
+
+CM_ SG_ 854 PACK_CURRENT "Signed value. Positive = discharge, negative = charge. Requires current sensor (Hall effect on Connector B).";
+CM_ SG_ 854 PACK_TEMPERATURE "Highest thermistor reading in pack. Requires thermistors enabled on BMSS24 boards.";
+

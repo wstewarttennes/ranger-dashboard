@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ranger EV</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+</head>
+<body>
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <button class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="tab" id="tab-terminal" onclick="switchTab('terminal')">Terminal</button>
+        <button class="tab" id="tab-browser" onclick="switchTab('browser')">Browser</button>
+        <div class="tab-spacer"></div>
+        <span class="tab-status">
+            <span id="tab-speed" class="tab-speed">0 MPH</span>
+            <span id="tab-soc" class="tab-soc">--% </span>
+        </span>
+    </div>
+
+    <!-- Dashboard view -->
+    <div id="view-dashboard" class="view active">
+        <div class="dashboard">
+            <!-- Top row: Speed + Power + Camera -->
+            <div class="top-row">
+                <div class="gauge-panel speed-panel">
+                    <div class="gauge-value" id="speed">0</div>
+                    <div class="gauge-unit" id="speed-unit">MPH</div>
+                    <div class="gauge-label" id="gear">N</div>
+                </div>
+
+                <div class="gauge-panel power-panel">
+                    <div class="power-value" id="power">0.0</div>
+                    <div class="gauge-unit">kW</div>
+                    <div class="power-bar-container">
+                        <div class="power-bar" id="power-bar"></div>
+                    </div>
+                </div>
+
+                <div class="camera-panel" id="camera-panel">
+                    <video id="comma-video" autoplay playsinline muted></video>
+                    <div class="camera-overlay" id="camera-overlay">
+                        <span id="comma-status">Comma 4: Connecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle row: Stats -->
+            <div class="mid-row">
+                <div class="stat-group">
+                    <div class="stat">
+                        <span class="stat-label">RPM</span>
+                        <span class="stat-value" id="rpm">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Motor</span>
+                        <span class="stat-value" id="motor-temp">--&deg;C</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Inverter</span>
+                        <span class="stat-value" id="inverter-temp">--&deg;C</span>
+                    </div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat">
+                        <span class="stat-label">Voltage</span>
+                        <span class="stat-value" id="voltage">--V</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Current</span>
+                        <span class="stat-value" id="current">--A</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">SOC</span>
+                        <span class="stat-value" id="soc">--%</span>
+                    </div>
+                </div>
+
+                <div class="stat-group openpilot-group">
+                    <div class="stat openpilot-stat">
+                        <span class="stat-label">openpilot</span>
+                        <span class="stat-value" id="op-state">offline</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Throttle</span>
+                        <span class="stat-value" id="throttle">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom row: Battery cells -->
+            <div class="bottom-row">
+                <div class="battery-panel">
+                    <div class="battery-header">
+                        <span>BATTERY</span>
+                        <span id="battery-summary">-- cells | &Delta; --mV</span>
+                    </div>
+                    <div class="cell-grid" id="cell-grid">
+                        <!-- 42 cells rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status bar -->
+            <div class="status-bar">
+                <span id="status-indicator" class="status-dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal view -->
+    <div id="view-terminal" class="view">
+        <div id="terminal-container" class="terminal-container"></div>
+    </div>
+
+    <!-- Browser view -->
+    <div id="view-browser" class="view">
+        <div class="browser-placeholder">
+            <div class="browser-links">
+                <h2>Quick Links</h2>
+                <div class="link-grid">
+                    <a class="link-card" href="https://connect.comma.ai" target="_blank">
+                        <div class="link-title">comma connect</div>
+                        <div class="link-desc">Manage your comma device</div>
+                    </a>
+                    <a class="link-card" href="https://www.youtube.com" target="_blank">
+                        <div class="link-title">YouTube</div>
+                        <div class="link-desc">Watch videos</div>
+                    </a>
+                    <a class="link-card" href="https://www.google.com" target="_blank">
+                        <div class="link-title">Google</div>
+                        <div class="link-desc">Search the web</div>
+                    </a>
+                    <a class="link-card" href="https://maps.google.com" target="_blank">
+                        <div class="link-title">Google Maps</div>
+                        <div class="link-desc">Navigation</div>
+                    </a>
+                </div>
+                <div class="custom-url">
+                    <input type="text" id="browser-url" class="browser-url-input"
+                           placeholder="Type a URL and press Go"
+                           onkeydown="if(event.key==='Enter')openUrl()">
+                    <button class="browser-go-btn" onclick="openUrl()">Go</button>
+                </div>
+                <p class="browser-hint">Links open in a new browser window. On the Pi, alt-tab or tap the taskbar to switch back.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert overlay for faults -->
+    <div id="fault-overlay" class="fault-overlay hidden">
+        <div class="fault-message" id="fault-message"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/gauges.js"></script>
+    <script src="/static/js/battery.js"></script>
+    <script src="/static/js/comma.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/terminal.js"></script>
+</body>
+</html>
