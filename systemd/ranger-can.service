@@ -1,0 +1,25 @@
+# Bring up both Ranger CAN interfaces at boot, before the dashboard container.
+# Install:
+#   sudo cp systemd/ranger-can.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ranger-can.service
+# Adjust the can1 bitrate below once the X1 CAN baud is confirmed in SmartView.
+[Unit]
+Description=Ranger EV — bring up CAN interfaces (can0 battery, can1 motor)
+After=sys-subsystem-net-devices-can0.device
+Wants=network-pre.target
+Before=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# can0 — Thunderstruck battery/charge bus @ 250k
+ExecStart=/sbin/ip link set can0 type can bitrate 250000 restart-ms 100
+ExecStart=/sbin/ip link set can0 up
+# can1 — X1 / Hyper9 motor bus @ 500k (VERIFY baud in SmartView)
+ExecStart=/sbin/ip link set can1 type can bitrate 500000 restart-ms 100
+ExecStart=/sbin/ip link set can1 up
+ExecStop=/sbin/ip link set can0 down
+ExecStop=/sbin/ip link set can1 down
+
+[Install]
+WantedBy=multi-user.target

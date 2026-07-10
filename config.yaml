@@ -5,12 +5,16 @@ server:
   port: 8088
 
 can:
-  # Use "virtual" for macOS development (in-process mock)
-  # Use "vcan0" for Linux with virtual CAN (testing)
-  # Use "can0" for real CAN HAT on Pi
-  interface: "can0"
-  bitrate: 500000
-  # DBC files to load
+  # "virtual"  = in-process simulator (macOS/dev, no hardware)
+  # "socketcan" = real CAN HAT on the Pi; buses listed below are opened
+  interface: "socketcan"
+  # One entry per physical CAN bus on the 2-CH HAT:
+  buses:
+    - channel: "can0"       # Thunderstruck battery/charge bus (MCU + TSM2500 charger)
+      bitrate: 250000       # matches MCU `can1br 250`
+    - channel: "can1"       # X1 / Hyper9 motor bus
+      bitrate: 500000       # TODO: VERIFY in SmartView (Hyper9/TM4 default is often 500k)
+  # DBC files (decoded by arbitration ID, routed to the right bus automatically)
   dbc_files:
     - "dbc/hyper9.dbc"
     - "dbc/thunderstruck_mcu.dbc"

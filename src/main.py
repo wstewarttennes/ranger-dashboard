@@ -60,17 +60,27 @@ async def lifespan(app: FastAPI):
         vehicle_state.cell_voltages = list(cell_voltages)
         vehicle_state.cell_temps = list(cell_temps)
 
-    # Start CAN reader or simulator
+    # Start CAN reader(s) or simulator
+    simulator: CANSimulator | None = None
+    readers: list[CANReader] = []
     if config.can.interface == "virtual":
         simulator = CANSimulator(on_message=on_can_message, on_bms_update=on_bms_update)
         await simulator.start()
     else:
-        reader = CANReader(
-            interface=config.can.interface,
-            bitrate=config.can.bitrate,
-            on_message=on_can_message,
-        )
-        await reader.start()
+        buses = config.can.resolved_buses()
+        if not buses:
+            logger.warning("No CAN buses configured (can.buses is empty) — no live data")
+        for bus in buses:
+            # All buses feed the same callback; on_can_message routes by
+            # arbitration ID (Hyper9 0x181-0x184 vs BMS 0x351-0x35B don't overlap),
+            # so a frame is handled correctly regardless of which bus it arrived on.
+            reader = CANReader(
+                interface=bus.channel,
+                bitrate=bus.bitrate,
+                on_message=on_can_message,
+            )
+            await reader.start()
+            readers.append(reader)
 
     # Start WebSocket broadcast
     broadcast_task = asyncio.create_task(broadcast_loop())
@@ -80,9 +90,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     broadcast_task.cancel()
-    if config.can.interface == "virtual":
+    if simulator is not None:
         await simulator.stop()
-    else:
+    for reader in readers:
         await reader.stop()
 
 
