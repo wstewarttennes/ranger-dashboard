@@ -23,7 +23,9 @@ def update_vehicle_state(state: VehicleState, arbitration_id: int, signals: dict
 
     if arbitration_id == HYPER9_STATUS_ID:
         state.speed_kmh = signals.get("VEHICLE_SPEED", 0.0)
-        state.soc_pct = signals.get("BATTERY_SOC", 0.0)
+        # NOTE: SOC is owned by the MCU BMS (0x355), which is the authoritative
+        # source. The X1 also reports a sniffed SoC here, but letting both write
+        # soc_pct makes the value flicker between the two. Leave SOC to the BMS.
         state.system_flags = int(signals.get("SYSTEM_FLAGS", 0))
         state.fault_code = int(signals.get("FAULT_CODE", 0))
         state.last_can_update = time.time()
