@@ -30,6 +30,10 @@ config = load_config()
 vehicle_state = VehicleState()
 can_parser = CANParser(config.can.dbc_files)
 
+# Apply the configurable RPM->speed factor (tunable via config.yaml, no rebuild)
+import src.can.hyper9 as _hyper9
+_hyper9.RPM_TO_KMH = config.display.rpm_to_kmh
+
 # Template and static dirs
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))

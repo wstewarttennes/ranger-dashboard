@@ -14,11 +14,10 @@ HYPER9_EXTENDED_ID = 0x184   # 388
 HYPER9_IDS = {HYPER9_STATUS_ID, HYPER9_POWER_ID, HYPER9_MOTOR_ID, HYPER9_EXTENDED_ID}
 
 # Motor RPM -> road speed (km/h). The X1's own Vehicle Speed output is
-# uncalibrated, so we compute speed from RPM instead. This factor assumes a
-# ~3.73:1 final drive and 26" tires (direct-to-diff): km/h = rpm / 3.73 *
-# (pi * 26 * 0.0254) * 60 / 1000. CALIBRATE against a GPS speed once driving
-# and adjust this single number if the drivetrain ratio differs.
-RPM_TO_KMH = 0.0334
+# uncalibrated, so we compute speed from RPM instead. Default assumes the
+# transmission is in the loop (~7.5:1 total) with 26" tires. Overridden at
+# startup from config.yaml (display.rpm_to_kmh) — tune against GPS.
+RPM_TO_KMH = 0.0167
 
 
 def is_hyper9_message(arbitration_id: int) -> bool:

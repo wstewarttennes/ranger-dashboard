@@ -37,3 +37,6 @@ display:
   update_rate: 20
   # Units: "metric" or "imperial"
   units: "imperial"
+  # Motor RPM -> road speed (km/h per rpm). Tune vs GPS: multiply by
+  # (actual_speed / displayed_speed). Restart container after editing.
+  rpm_to_kmh: 0.0167

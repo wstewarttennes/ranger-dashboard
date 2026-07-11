@@ -45,6 +45,10 @@ class CommaConfig(BaseModel):
 class DisplayConfig(BaseModel):
     update_rate: int = 20
     units: str = "imperial"
+    # Motor RPM -> road speed factor (km/h per rpm). Tune against GPS: if the
+    # dash reads high by X%, multiply this by (actual/displayed). Restart the
+    # container after changing (config.yaml is a mounted volume — no rebuild).
+    rpm_to_kmh: float = 0.0167
 
 
 class AppConfig(BaseModel):
