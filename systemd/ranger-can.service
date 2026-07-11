@@ -15,8 +15,8 @@ RemainAfterExit=yes
 # can0 — Thunderstruck battery/charge bus @ 250k
 ExecStart=/sbin/ip link set can0 type can bitrate 250000 restart-ms 100
 ExecStart=/sbin/ip link set can0 up
-# can1 — X1 / Hyper9 motor bus @ 500k (VERIFY baud in SmartView)
-ExecStart=/sbin/ip link set can1 type can bitrate 500000 restart-ms 100
+# can1 — X1 / Hyper9 motor bus @ 250k (confirmed on bus)
+ExecStart=/sbin/ip link set can1 type can bitrate 250000 restart-ms 100
 ExecStart=/sbin/ip link set can1 up
 ExecStop=/sbin/ip link set can0 down
 ExecStop=/sbin/ip link set can1 down
