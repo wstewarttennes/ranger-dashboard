@@ -13,7 +13,7 @@ can:
     - channel: "can0"       # Thunderstruck battery/charge bus (MCU + TSM2500 charger)
       bitrate: 250000       # matches MCU `can1br 250`
     - channel: "can1"       # X1 / Hyper9 motor bus
-      bitrate: 500000       # TODO: VERIFY in SmartView (Hyper9/TM4 default is often 500k)
+      bitrate: 250000       # confirmed on bus: X1 CANopen at 250k (0x181/0x281/0x701)
   # DBC files (decoded by arbitration ID, routed to the right bus automatically)
   dbc_files:
     - "dbc/hyper9.dbc"
