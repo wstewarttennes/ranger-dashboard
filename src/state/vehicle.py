@@ -110,6 +110,16 @@ class VehicleState:
     bms_fault_flags_2: int = 0
     bms_status_flags_2: int = 0
 
+    # Onboard charger (TSM2500, decoded from CAN 0x18EB2440 while charging)
+    charge_voltage: float = 0.0
+    charge_current: float = 0.0
+    charger_temp_c: float = 0.0
+    charging: bool = False
+
+    @property
+    def charge_watts(self) -> float:
+        return self.charge_voltage * self.charge_current
+
     @property
     def min_cell_v(self) -> float:
         active = [v for v in self.cell_voltages if v > 0]
@@ -169,6 +179,12 @@ class VehicleState:
             "discharge_voltage_limit": round(self.discharge_voltage_limit, 1),
             "bms_fault_flags": self.bms_fault_flags,
             "bms_status_flags": self.bms_status_flags,
+            # Charger (TSM2500)
+            "charge_voltage": round(self.charge_voltage, 1),
+            "charge_current": round(self.charge_current, 1),
+            "charge_watts": round(self.charge_watts),
+            "charger_temp_c": round(self.charger_temp_c, 1),
+            "charging": self.charging,
             "cell_voltages": [round(v, 3) for v in self.cell_voltages],
             "cell_temps": [round(t, 1) for t in self.cell_temps],
             "min_cell_v": round(self.min_cell_v, 3),

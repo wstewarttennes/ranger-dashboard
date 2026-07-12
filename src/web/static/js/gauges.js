@@ -44,10 +44,30 @@ function updateGauges(state) {
     invTemp.textContent = state.inverter_temp_c.toFixed(0) + "\u00B0C";
     invTemp.className = "stat-value " + getTempClass(state.inverter_temp_c, 70, 90);
 
-    // Electrical
-    document.getElementById("voltage").textContent = state.dc_bus_voltage.toFixed(1) + "V";
-    document.getElementById("current").textContent = state.dc_bus_current.toFixed(1) + "A";
-    document.getElementById("soc").textContent = state.soc_pct.toFixed(0) + "%";
+    // Electrical — while charging, show live charge V/A (from the TSM2500);
+    // otherwise show the X1 motor-bus values.
+    if (state.charging) {
+        document.getElementById("voltage").textContent = state.charge_voltage.toFixed(1) + "V";
+        document.getElementById("current").textContent = state.charge_current.toFixed(0) + "A";
+    } else {
+        document.getElementById("voltage").textContent = state.dc_bus_voltage.toFixed(1) + "V";
+        document.getElementById("current").textContent = state.dc_bus_current.toFixed(1) + "A";
+    }
+    document.getElementById("soc").textContent = state.soc_pct > 0 ? state.soc_pct.toFixed(0) + "%" : "--%";
+
+    // Charging panel
+    const chgStatus = document.getElementById("charge-status");
+    if (state.charging) {
+        chgStatus.textContent = "⚡ Charging";
+        chgStatus.style.color = "#00e676";
+        document.getElementById("charge-power").textContent = state.charge_watts + "W";
+        document.getElementById("charger-temp").textContent = state.charger_temp_c.toFixed(0) + "°C";
+    } else {
+        chgStatus.textContent = "Idle";
+        chgStatus.style.color = "";
+        document.getElementById("charge-power").textContent = "--W";
+        document.getElementById("charger-temp").textContent = "--°C";
+    }
 
     // Throttle
     document.getElementById("throttle").textContent = state.throttle_pct.toFixed(0) + "%";

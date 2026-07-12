@@ -13,6 +13,7 @@ from src.state.vehicle import VehicleState
 from src.can.parser import CANParser
 from src.can.hyper9 import is_hyper9_message, update_vehicle_state as update_hyper9_state
 from src.can.bms import is_bms_message, update_vehicle_state as update_bms_state
+from src.can.charger import is_charger_message, update_vehicle_state as update_charger_state
 from src.can.reader import CANReader
 from src.can.simulator import CANSimulator
 from src.api.routes import router, ws_manager, get_state as _unused
@@ -41,6 +42,10 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 
 def on_can_message(arbitration_id: int, data: bytes, timestamp: float):
     """Callback for all CAN messages (from reader or simulator)."""
+    # Charger frames are extended IDs not in the DBC — decode them directly.
+    if is_charger_message(arbitration_id):
+        update_charger_state(vehicle_state, arbitration_id, data)
+        return
     signals = can_parser.decode(arbitration_id, data)
     if signals is None:
         return
