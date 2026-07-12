@@ -35,5 +35,5 @@ def update_vehicle_state(state: VehicleState, arbitration_id: int, data: bytes):
     state.charge_voltage = ((data[3] << 8) | data[2]) / 10.0
     state.charge_current = float(data[5])
     state.charger_temp_c = float(data[6]) - 40.0
-    state.charging = state.charge_current > 0.5 and state.charge_voltage > 1.0
+    state.last_charge_update = time.time()  # `charging` property uses this to auto-clear
     state.last_can_update = time.time()

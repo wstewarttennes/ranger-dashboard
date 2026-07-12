@@ -114,7 +114,13 @@ class VehicleState:
     charge_voltage: float = 0.0
     charge_current: float = 0.0
     charger_temp_c: float = 0.0
-    charging: bool = False
+    last_charge_update: float = 0.0
+
+    @property
+    def charging(self) -> bool:
+        # Only "charging" if a live charger frame arrived in the last few seconds
+        # AND current is flowing — so it auto-clears when you unplug.
+        return (time.time() - self.last_charge_update) < 3.0 and self.charge_current > 0.5
 
     @property
     def charge_watts(self) -> float:
