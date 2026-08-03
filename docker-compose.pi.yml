@@ -6,6 +6,11 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./dbc:/app/dbc
+      - ./data:/app/data
     environment:
       - TERM=xterm-256color
+      # MQTT password for the HA broker (set in .env on the Pi; keep out of git)
+      - RANGER_MQTT_PASSWORD=${RANGER_MQTT_PASSWORD:-}
+      # HA long-lived access token for statistics backfill (set in .env)
+      - RANGER_HA_TOKEN=${RANGER_HA_TOKEN:-}
     restart: unless-stopped

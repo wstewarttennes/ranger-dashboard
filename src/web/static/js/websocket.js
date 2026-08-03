@@ -74,6 +74,8 @@ function onVehicleState(state) {
     updateBattery(state);
     updateFaultOverlay(state);
     updateTabStatus(state);
+    updateDiagnostics(state);
+    updateEnergy(state);
 }
 
 // Start connection on load

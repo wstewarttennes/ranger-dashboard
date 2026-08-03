@@ -30,7 +30,26 @@ BO_ 388 HYPER9_EXTENDED: 8 HYPER9
   SG_ FAULT_LEVEL : 0|8@1+ (1,0) [0|4] "" PANDA
   SG_ MOTOR_FLAGS : 8|16@1+ (1,0) [0|65535] "" PANDA
 
+BO_ 1157 HYPER9_KEYVOLT: 8 HYPER9
+  SG_ KEY_SWITCH_VOLTAGE : 0|16@1- (0.01,0) [-327.68|327.67] "V" PANDA
+  SG_ SWITCH_STATES : 16|16@1+ (1,0) [0|65535] "" PANDA
+
+BO_ 1154 HYPER9_LIFE: 8 HYPER9
+  SG_ ODO_HIGH : 0|16@1+ (1,0) [0|65535] "" PANDA
+  SG_ ODO_LOW : 16|16@1+ (1,0) [0|65535] "" PANDA
+  SG_ KEY_ON_HOURS : 32|16@1+ (1,0) [0|65535] "h" PANDA
+  SG_ SERVICE_HOURS : 48|16@1+ (1,0) [0|65535] "h" PANDA
+
+BO_ 1155 HYPER9_MOTOR2: 8 HYPER9
+  SG_ MOTOR_OP_HOURS : 0|16@1+ (1,0) [0|65535] "h" PANDA
+  SG_ MOTOR_IQ : 16|16@1- (0.1,0) [-3276.8|3276.7] "A" PANDA
+  SG_ MOTOR_SPEED_REF : 32|16@1- (1,0) [-32768|32767] "rpm" PANDA
+  SG_ NODE_DC_CURRENT : 48|16@1- (0.1,0) [-3276.8|3276.7] "A" PANDA
+
 CM_ BO_ 385 "TPDO 1: Primary vehicle status (20ms rate)";
+CM_ BO_ 1157 "Configurable TPDO1 (0x485): slot1 Key Switch (12V supply) Voltage cV, slot2 digital-input/switch states bitfield (F/R selector — bit masks in config.yaml display.switch_*_mask, calibrated live)";
+CM_ BO_ 1154 "Configurable TPDO2 (0x482): odometer Hi/Lo (Dam), key-on hours, time-to-service hours";
+CM_ BO_ 1155 "Configurable TPDO3 (0x483): motor op hours, Iq (dA), speed ref, node DC current (dA)";
 CM_ BO_ 386 "TPDO 2: Power data (100ms rate)";
 CM_ BO_ 387 "TPDO 3: Motor data (50ms rate)";
 CM_ BO_ 388 "TPDO 4: Extended status (200ms rate)";

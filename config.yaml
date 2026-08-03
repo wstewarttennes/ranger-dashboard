@@ -32,6 +32,30 @@ comma:
     - "selfdriveState"
     - "deviceState"
 
+mqtt:
+  # Publish vehicle state to Home Assistant (retained + auto-discovered).
+  # Retained means HA keeps showing the LAST reading (SoC, charge, temps) even
+  # after the truck powers off; binary_sensor.ranger_online tracks live status.
+  enabled: true
+  host: "192.168.1.153"     # HA host running the Mosquitto add-on
+  port: 1883
+  username: "ranger"        # add this login in the Mosquitto add-on config
+  # password: set via env RANGER_MQTT_PASSWORD (keep it out of git)
+  base_topic: "ranger"
+  publish_rate: 1.0         # Hz
+
+ha_stats:
+  # Backfill offline drives into Home Assistant long-term statistics.
+  # A drive with no wifi is logged full-res to the Pi (data/history.db), then
+  # aggregated to hourly and pushed to HA once you're home — correctly
+  # time-stamped, showing up as ranger:<metric> in the Statistics/Energy views.
+  enabled: true
+  url: "http://192.168.1.153:8123"   # HA base URL on the LAN
+  # token: set via env RANGER_HA_TOKEN (HA profile -> Long-lived access tokens)
+  source: "ranger"                    # -> statistic ids ranger:soc, ranger:power_kw, ...
+  sync_interval_s: 600                # push complete hours every 10 min
+  retention_days: 0                   # keep the Pi's SQLite log forever (0 = no prune)
+
 display:
   # Target update rate for WebSocket push (Hz)
   update_rate: 20
@@ -40,3 +64,9 @@ display:
   # Motor RPM -> road speed (km/h per rpm). Tune vs GPS: multiply by
   # (actual_speed / displayed_speed). Restart container after editing.
   rpm_to_kmh: 0.0167
+  # F/R selector bit masks in the X1 switch-states word (0x485 slot 2).
+  # 0 = uncalibrated -> gear derives from signed RPM (throttle-only).
+  # Calibrate: flip the selector, watch switch_states_raw in /api/state,
+  # set the bit that toggles for each direction. Restart after editing.
+  switch_fwd_mask: 0
+  switch_rev_mask: 0

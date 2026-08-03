@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Ranger EV</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=3">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=15">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
 </head>
 <body>
     <!-- Tab bar -->
     <div class="tab-bar">
         <button class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="tab" id="tab-diagnostics" onclick="switchTab('diagnostics')">Diagnostics</button>
+        <button class="tab" id="tab-energy" onclick="switchTab('energy')">Energy</button>
+        <button class="tab" id="tab-goblin" onclick="switchTab('goblin')">Goblin</button>
+        <button class="tab" id="tab-cityflavor" onclick="switchTab('cityflavor')">CityFlavor</button>
+        <button class="tab" id="tab-homeassistant" onclick="switchTab('homeassistant')">Home Assistant</button>
         <button class="tab" id="tab-terminal" onclick="switchTab('terminal')">Terminal</button>
         <button class="tab" id="tab-browser" onclick="switchTab('browser')">Browser</button>
         <div class="tab-spacer"></div>
@@ -28,7 +33,13 @@
                 <div class="gauge-panel speed-panel">
                     <div class="gauge-value" id="speed">0</div>
                     <div class="gauge-unit" id="speed-unit">MPH</div>
-                    <div class="gauge-label" id="gear">N</div>
+                    <div class="gear-selector" id="gear-selector">
+                        <div class="gear-knob" id="gear-knob"></div>
+                        <span class="gear-opt" data-gear="R">R</span>
+                        <span class="gear-opt" data-gear="N">N</span>
+                        <span class="gear-opt" data-gear="D">D</span>
+                        <div class="gear-lock hidden" id="gear-lock">&#128274; LOCKED</div>
+                    </div>
                 </div>
 
                 <div class="gauge-panel power-panel">
@@ -92,6 +103,9 @@
                         <span class="stat-label">Charger Temp</span>
                         <span class="stat-value" id="charger-temp">--&deg;C</span>
                     </div>
+                    <div class="charge-progress" id="charge-progress">
+                        <div class="charge-progress-bar" id="charge-progress-bar"></div>
+                    </div>
                 </div>
 
                 <div class="stat-group openpilot-group">
@@ -106,23 +120,144 @@
                 </div>
             </div>
 
-            <!-- Bottom row: Battery cells -->
-            <div class="bottom-row">
-                <div class="battery-panel">
-                    <div class="battery-header">
-                        <span>BATTERY</span>
-                        <span id="battery-summary">-- cells | &Delta; --mV</span>
-                    </div>
-                    <div class="cell-grid" id="cell-grid">
-                        <!-- 42 cells rendered by JS -->
-                    </div>
-                </div>
-            </div>
-
             <!-- Status bar -->
             <div class="status-bar">
                 <span id="status-indicator" class="status-dot"></span>
                 <span id="status-text">Connecting...</span>
+                <span class="status-spacer"></span>
+                <span id="dcdc-badge" class="dcdc-badge">DC-DC 12V: --</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Energy view -->
+    <div id="view-energy" class="view">
+        <div class="subtab-bar">
+            <button class="subtab active" data-esub="trip" onclick="switchEnergy('trip')">Trip</button>
+            <button class="subtab" data-esub="charges" onclick="switchEnergy('charges')">Charge Log</button>
+            <button class="subtab" data-esub="graphs" onclick="switchEnergy('graphs')">Graphs</button>
+        </div>
+        <div class="subview-wrap">
+            <!-- Trip + efficiency -->
+            <div id="esub-trip" class="subview active">
+                <div class="diag-section-title">Trip <button class="app-btn trip-reset" onclick="resetTrip()">&#8635; Reset</button></div>
+                <div class="diag-grid" id="energy-trip-grid"></div>
+                <div class="diag-section-title">Since Last Charge</div>
+                <div class="diag-grid" id="energy-since-grid"></div>
+            </div>
+            <!-- Charge session log -->
+            <div id="esub-charges" class="subview">
+                <div class="diag-section-title">Charge Sessions</div>
+                <div id="charge-log"></div>
+            </div>
+            <!-- Graphs -->
+            <div id="esub-graphs" class="subview">
+                <div class="graph-block"><div class="graph-title">State of Charge (%)</div><div id="graph-soc" class="graph"></div></div>
+                <div class="graph-block"><div class="graph-title">Power (kW)</div><div id="graph-power" class="graph"></div></div>
+                <div class="graph-block"><div class="graph-title">Temps (&deg;C) — motor / inverter / charger</div><div id="graph-temps" class="graph"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnostics view -->
+    <div id="view-diagnostics" class="view">
+        <div class="subtab-bar">
+            <button class="subtab active" data-sub="motor" onclick="switchSubtab('motor')">Motor</button>
+            <button class="subtab" data-sub="battery" onclick="switchSubtab('battery')">Battery</button>
+            <button class="subtab" data-sub="charger" onclick="switchSubtab('charger')">Charger</button>
+            <button class="subtab" data-sub="flags" onclick="switchSubtab('flags')">Flags &amp; Faults</button>
+            <button class="subtab" data-sub="canraw" onclick="switchSubtab('canraw')">CAN Raw</button>
+        </div>
+
+        <div class="subview-wrap">
+            <!-- Motor / Inverter -->
+            <div id="sub-motor" class="subview active">
+                <div class="diag-grid" id="diag-motor-grid"></div>
+            </div>
+
+            <!-- Battery / BMS -->
+            <div id="sub-battery" class="subview">
+                <div class="diag-grid" id="diag-battery-grid"></div>
+                <div class="diag-section-title" id="celltemp-title">Cell Temperatures</div>
+                <div class="celltemp-grid" id="diag-celltemp-grid"></div>
+            </div>
+
+            <!-- Charger -->
+            <div id="sub-charger" class="subview">
+                <div class="charge-hero" id="diag-charge-hero">
+                    <div class="charge-hero-status" id="diag-charge-status">Idle</div>
+                    <div class="charge-hero-power" id="diag-charge-power">-- W</div>
+                    <div class="charge-hero-soc">
+                        <div class="charge-hero-soc-bar" id="diag-charge-soc-bar"></div>
+                        <span id="diag-charge-soc-label">--%</span>
+                    </div>
+                </div>
+                <div class="diag-grid" id="diag-charger-grid"></div>
+            </div>
+
+            <!-- Flags & Faults -->
+            <div id="sub-flags" class="subview">
+                <div class="diag-section-title">Fault</div>
+                <div class="diag-grid" id="diag-fault-grid"></div>
+                <div class="diag-section-title">System Flags (X1)</div>
+                <div class="chip-grid" id="diag-sysflags"></div>
+                <div class="diag-section-title">BMS Flag Words (MCU)</div>
+                <div class="diag-grid" id="diag-bmsflags-grid"></div>
+            </div>
+
+            <!-- CAN Raw sniffer -->
+            <div id="sub-canraw" class="subview">
+                <div class="canraw-bar" id="canraw-buses"></div>
+                <div class="canraw-table-wrap">
+                    <table class="canraw-table">
+                        <thead>
+                            <tr><th>Bus</th><th>ID</th><th>DLC</th><th>Data</th><th>Hz</th><th>Count</th><th>Age</th></tr>
+                        </thead>
+                        <tbody id="canraw-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goblin app view -->
+    <div id="view-goblin" class="view">
+        <div class="app-toolbar">
+            <span class="app-title">&#128123; Goblin</span>
+            <button class="app-btn" onclick="reloadApp('goblin')">&#8635; Reload</button>
+        </div>
+        <iframe id="goblin-frame" class="app-frame" referrerpolicy="no-referrer"></iframe>
+    </div>
+
+    <!-- CityFlavor app view -->
+    <div id="view-cityflavor" class="view">
+        <div class="app-toolbar">
+            <span class="app-title">&#127859; CityFlavor</span>
+            <button class="app-btn" onclick="reloadApp('cityflavor')">&#8635; Reload</button>
+        </div>
+        <iframe id="cityflavor-frame" class="app-frame" referrerpolicy="no-referrer"></iframe>
+    </div>
+
+    <!-- Home Assistant view -->
+    <div id="view-homeassistant" class="view">
+        <div class="browser-toolbar">
+            <span class="ha-title">&#127968; Home Assistant</span>
+            <input type="text" id="ha-url" class="browser-url-input"
+                   placeholder="https://...ui.nabu.casa/lovelace-weston/home"
+                   value="https://4l5woxhbnrc5q8wf12nfciq26z9ueb9j.ui.nabu.casa/lovelace-weston/home"
+                   onkeydown="if(event.key==='Enter')loadHomeAssistant()">
+            <button class="browser-go-btn" onclick="loadHomeAssistant()">Open</button>
+        </div>
+        <iframe id="ha-frame" class="browser-frame hidden" referrerpolicy="no-referrer"></iframe>
+        <div id="ha-placeholder" class="browser-placeholder">
+            <div class="browser-links">
+                <h2>Home Assistant</h2>
+                <p class="browser-hint">
+                    Set your HA address above and tap <b>Open</b> to embed your dashboard here.
+                    If it shows a blank/refused page, HA is blocking embedding &mdash; add
+                    <code>http:&nbsp;use_x_frame_options:&nbsp;false</code> (and your dashboard URL to
+                    <code>allowed_frame_ancestors</code>) in HA's <code>configuration.yaml</code>, then restart HA.
+                </p>
             </div>
         </div>
     </div>
@@ -134,34 +269,36 @@
 
     <!-- Browser view -->
     <div id="view-browser" class="view">
-        <div class="browser-placeholder">
+        <div class="browser-toolbar">
+            <button class="browser-home-btn" onclick="browserHome()">&#8962; Links</button>
+            <input type="text" id="browser-url" class="browser-url-input"
+                   placeholder="Type a URL and press Go"
+                   onkeydown="if(event.key==='Enter')openUrl()">
+            <button class="browser-go-btn" onclick="openUrl()">Go</button>
+        </div>
+        <iframe id="browser-frame" class="browser-frame hidden" referrerpolicy="no-referrer"></iframe>
+        <div id="browser-placeholder" class="browser-placeholder">
             <div class="browser-links">
                 <h2>Quick Links</h2>
                 <div class="link-grid">
-                    <a class="link-card" href="https://connect.comma.ai" target="_blank">
+                    <a class="link-card" href="#" onclick="loadUrl('https://connect.comma.ai');return false;">
                         <div class="link-title">comma connect</div>
                         <div class="link-desc">Manage your comma device</div>
                     </a>
-                    <a class="link-card" href="https://www.youtube.com" target="_blank">
+                    <a class="link-card" href="#" onclick="loadUrl('https://www.youtube.com');return false;">
                         <div class="link-title">YouTube</div>
                         <div class="link-desc">Watch videos</div>
                     </a>
-                    <a class="link-card" href="https://www.google.com" target="_blank">
+                    <a class="link-card" href="#" onclick="loadUrl('https://www.google.com');return false;">
                         <div class="link-title">Google</div>
                         <div class="link-desc">Search the web</div>
                     </a>
-                    <a class="link-card" href="https://maps.google.com" target="_blank">
+                    <a class="link-card" href="#" onclick="loadUrl('https://maps.google.com');return false;">
                         <div class="link-title">Google Maps</div>
                         <div class="link-desc">Navigation</div>
                     </a>
                 </div>
-                <div class="custom-url">
-                    <input type="text" id="browser-url" class="browser-url-input"
-                           placeholder="Type a URL and press Go"
-                           onkeydown="if(event.key==='Enter')openUrl()">
-                    <button class="browser-go-btn" onclick="openUrl()">Go</button>
-                </div>
-                <p class="browser-hint">Links open in a new browser window. On the Pi, alt-tab or tap the taskbar to switch back.</p>
+                <p class="browser-hint">Pages open <b>inside</b> the dashboard &mdash; tap <b>Dashboard</b> up top to return to your gauges anytime. (Some sites block embedding and may not load; use the address bar for others.)</p>
             </div>
         </div>
     </div>
@@ -173,11 +310,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
-    <script src="/static/js/websocket.js?v=3"></script>
-    <script src="/static/js/gauges.js?v=3"></script>
-    <script src="/static/js/battery.js?v=3"></script>
-    <script src="/static/js/comma.js?v=3"></script>
-    <script src="/static/js/app.js?v=3"></script>
-    <script src="/static/js/terminal.js?v=3"></script>
+    <script src="/static/js/websocket.js?v=15"></script>
+    <script src="/static/js/gauges.js?v=15"></script>
+    <script src="/static/js/battery.js?v=15"></script>
+    <script src="/static/js/comma.js?v=15"></script>
+    <script src="/static/js/diagnostics.js?v=15"></script>
+    <script src="/static/js/energy.js?v=15"></script>
+    <script src="/static/js/app.js?v=15"></script>
+    <script src="/static/js/terminal.js?v=15"></script>
 </body>
 </html>

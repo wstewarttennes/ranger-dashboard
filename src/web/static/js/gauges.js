@@ -9,12 +9,28 @@ function updateGauges(state) {
     speedEl.textContent = Math.round(state.speed_mph);
     speedUnit.textContent = "MPH";
 
-    // Gear
-    const gearEl = document.getElementById("gear");
-    gearEl.textContent = state.gear;
-    gearEl.style.color = state.gear === "R" ? "var(--accent-orange)" :
-                          state.gear === "D" ? "var(--accent-green)" :
-                          "var(--text-secondary)";
+    // Gear selector — slide the knob to the active gear (R / N / D).
+    // While charging the drivetrain is locked out, so show a LOCKED state.
+    const selector = document.getElementById("gear-selector");
+    const lock = document.getElementById("gear-lock");
+    if (selector) selector.classList.toggle("locked", !!state.charging);
+    if (lock) lock.classList.toggle("hidden", !state.charging);
+
+    if (!state.charging) {
+        const gearOrder = ["R", "N", "D"];
+        const gearIdx = gearOrder.indexOf(state.gear);
+        const knob = document.getElementById("gear-knob");
+        if (knob && gearIdx >= 0) {
+            knob.style.transform = "translateX(" + (gearIdx * 100) + "%)";
+            knob.style.background = state.gear === "R" ? "var(--accent-orange)" :
+                                    state.gear === "D" ? "var(--accent-green)" :
+                                    "var(--text-secondary)";
+        }
+        document.querySelectorAll(".gear-opt").forEach(o =>
+            o.classList.toggle("active", o.dataset.gear === state.gear));
+    } else {
+        document.querySelectorAll(".gear-opt").forEach(o => o.classList.remove("active"));
+    }
 
     // Power
     const powerEl = document.getElementById("power");
@@ -57,16 +73,21 @@ function updateGauges(state) {
 
     // Charging panel
     const chgStatus = document.getElementById("charge-status");
+    const chgProgress = document.getElementById("charge-progress");
+    const chgBar = document.getElementById("charge-progress-bar");
     if (state.charging) {
         chgStatus.textContent = "⚡ Charging";
         chgStatus.style.color = "#00e676";
         document.getElementById("charge-power").textContent = state.charge_watts + "W";
         document.getElementById("charger-temp").textContent = state.charger_temp_c.toFixed(0) + "°C";
+        if (chgProgress) chgProgress.classList.add("active");
+        if (chgBar) chgBar.style.width = (state.soc_pct > 0 ? state.soc_pct : 0) + "%";
     } else {
         chgStatus.textContent = "Idle";
         chgStatus.style.color = "";
         document.getElementById("charge-power").textContent = "--W";
         document.getElementById("charger-temp").textContent = "--°C";
+        if (chgProgress) chgProgress.classList.remove("active");
     }
 
     // Throttle
@@ -76,6 +97,27 @@ function updateGauges(state) {
     const opState = document.getElementById("op-state");
     opState.textContent = state.openpilot_state;
     opState.className = "stat-value op-" + state.openpilot_state;
+
+    // DC-DC / 12V health — from the key-undervoltage flag (until a real 12V TPDO
+    // is enabled in SmartView). LOW = the DC-DC isn't holding the 12V rail up.
+    const dcdc = document.getElementById("dcdc-badge");
+    if (dcdc) {
+        if (state.key_voltage_live) {
+            // Real 12V number from the mapped TPDO
+            const v = state.key_switch_voltage;
+            dcdc.textContent = "12V: " + v.toFixed(1) + "V";
+            dcdc.className = "dcdc-badge " + (v < 12.0 ? "low" : v < 13.0 ? "" : "ok");
+        } else if (state.key_undervoltage) {
+            dcdc.textContent = "DC-DC 12V: LOW ⚠";
+            dcdc.className = "dcdc-badge low";
+        } else if (state.vehicle_running || state.charging) {
+            dcdc.textContent = "DC-DC 12V: OK";
+            dcdc.className = "dcdc-badge ok";
+        } else {
+            dcdc.textContent = "DC-DC 12V: --";
+            dcdc.className = "dcdc-badge";
+        }
+    }
 }
 
 function getTempClass(temp, warnThreshold, critThreshold) {

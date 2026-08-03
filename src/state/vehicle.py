@@ -5,8 +5,10 @@ import time
 # System flag bit positions (from hyper9.dbc)
 FLAG_SOC_LOW_TRACTION = 1 << 0
 FLAG_SOC_LOW_HYDRAULIC = 1 << 1
-FLAG_REVERSE_ACTIVE = 1 << 2
-FLAG_FORWARD_ACTIVE = 1 << 3
+# NOTE: bits confirmed empirically on the truck — driving FORWARD sets 1<<2
+# (earlier decode had these two swapped, which showed "R" while driving forward).
+FLAG_FORWARD_ACTIVE = 1 << 2
+FLAG_REVERSE_ACTIVE = 1 << 3
 FLAG_PARK_BRAKE = 1 << 4
 FLAG_PEDAL_BRAKE = 1 << 5
 FLAG_OVERTEMP = 1 << 6
@@ -20,6 +22,14 @@ FLAG_POWERING_READY = 1 << 13
 FLAG_PRECHARGING = 1 << 14
 FLAG_CONTACTOR_CLOSING = 1 << 15
 
+# F/R selector bit masks within the switch-states word (0x485 slot 2).
+# 0 = uncalibrated: gear falls back to signed-RPM detection. Calibrate live —
+# flip the selector while watching switch_states_raw in /api/state, then set
+# display.switch_fwd_mask / display.switch_rev_mask in config.yaml (patched
+# in at startup by main.py, same pattern as RPM_TO_KMH).
+SWITCH_FWD_MASK = 0
+SWITCH_REV_MASK = 0
+
 # Fault level descriptions
 FAULT_LEVELS = {
     0: "Ready",
@@ -28,6 +38,28 @@ FAULT_LEVELS = {
     3: "Limiting",
     4: "Warning",
 }
+
+# (bitmask, key, label, severity) for every system flag bit.
+# severity drives the chip color in the Diagnostics UI:
+#   good = green (healthy/active), info = blue (neutral state), warn = red (attention)
+SYSTEM_FLAG_DEFS = [
+    (FLAG_VEHICLE_RUNNING,   "running",           "Running",            "good"),
+    (FLAG_FORWARD_ACTIVE,    "forward",           "Forward",            "good"),
+    (FLAG_REVERSE_ACTIVE,    "reverse",           "Reverse",            "good"),
+    (FLAG_TRACTION_ENABLED,  "traction_enabled",  "Traction Enabled",   "good"),
+    (FLAG_HYDRAULIC_ENABLED, "hydraulic_enabled", "Hydraulic Enabled",  "good"),
+    (FLAG_POWERING_ENABLED,  "powering_enabled",  "Powering Enabled",   "good"),
+    (FLAG_POWERING_READY,    "powering_ready",    "Powering Ready",     "good"),
+    (FLAG_PRECHARGING,       "precharging",       "Precharging",        "info"),
+    (FLAG_CONTACTOR_CLOSING, "contactor_closing", "Contactor Closing",  "info"),
+    (FLAG_PARK_BRAKE,        "park_brake",        "Park Brake",         "info"),
+    (FLAG_PEDAL_BRAKE,       "pedal_brake",       "Pedal Brake",        "info"),
+    (FLAG_SOC_LOW_TRACTION,  "soc_low_traction",  "SoC Low (Traction)", "warn"),
+    (FLAG_SOC_LOW_HYDRAULIC, "soc_low_hydraulic", "SoC Low (Hydraulic)", "warn"),
+    (FLAG_OVERTEMP,          "overtemp",          "Overtemp",           "warn"),
+    (FLAG_KEY_OVERVOLTAGE,   "key_overvoltage",   "Key Overvoltage",    "warn"),
+    (FLAG_KEY_UNDERVOLTAGE,  "key_undervoltage",  "Key Undervoltage",   "warn"),
+]
 
 
 @dataclass
@@ -60,10 +92,30 @@ class VehicleState:
 
     @property
     def gear(self) -> str:
-        if self.system_flags & FLAG_REVERSE_ACTIVE:
-            return "R"
-        elif self.system_flags & FLAG_FORWARD_ACTIVE:
+        # Preferred source: the actual F/R selector position from the
+        # switch-states word (0x485 slot 2) — shows R/D the moment the switch
+        # moves, throttle or not. Only used once the TPDO is mapped in
+        # SmartView AND the bit masks are calibrated (see SWITCH_*_MASK above);
+        # requires fresh frames so a dead TPDO can't freeze the display.
+        if ((SWITCH_FWD_MASK or SWITCH_REV_MASK)
+                and (time.time() - self.last_switch_update) < 2.0):
+            if self.switch_states & SWITCH_REV_MASK:
+                return "R"
+            if self.switch_states & SWITCH_FWD_MASK:
+                return "D"
+            return "N"
+        # Fallback: SIGNED motor RPM, not the SYSTEM_FLAGS forward/reverse
+        # bits. On this firmware the 0x181 flag word is unreliable: its
+        # direction/state bits (BIT2 Reverse, BIT3 Forward, BIT9 Running,
+        # BIT14 Precharging) sit frozen and do not track the F/R selector —
+        # verified live through a full D/R/N cycle, bytes 3-4 never moved.
+        # MOTOR_RPM (0x183) is signed: >0 forward, <0 reverse. A small
+        # deadband avoids flicker at a standstill, where direction is unknown
+        # and we honestly report N.
+        if self.motor_rpm > 20:
             return "D"
+        if self.motor_rpm < -20:
+            return "R"
         return "N"
 
     @property
@@ -87,8 +139,25 @@ class VehicleState:
         return bool(self.system_flags & FLAG_PARK_BRAKE)
 
     @property
+    def key_undervoltage(self) -> bool:
+        return bool(self.system_flags & FLAG_KEY_UNDERVOLTAGE)
+
+    @property
+    def has_fault(self) -> bool:
+        return self.fault_level > 0 or self.bms_fault_flags != 0
+
+    @property
     def fault_level_str(self) -> str:
         return FAULT_LEVELS.get(self.fault_level, "Unknown")
+
+    @property
+    def system_flags_decoded(self) -> list[dict]:
+        """Every system-flag bit as {key,label,active,severity} for the UI."""
+        return [
+            {"key": key, "label": label,
+             "active": bool(self.system_flags & mask), "severity": sev}
+            for (mask, key, label, sev) in SYSTEM_FLAG_DEFS
+        ]
 
     # BMS data
     soc_pct: float = 0.0
@@ -109,6 +178,30 @@ class VehicleState:
     bms_status_flags: int = 0
     bms_fault_flags_2: int = 0
     bms_status_flags_2: int = 0
+
+    # X1 Key Switch (12V supply) voltage — from a configurable TPDO (0x481).
+    # 0 until the TPDO is mapped in SmartView.
+    key_switch_voltage: float = 0.0
+    last_key_voltage_update: float = 0.0
+
+    # X1 digital-input/switch states word (0x485 slot 2) — F/R selector lives
+    # here. 0 until the TPDO is mapped in SmartView.
+    switch_states: int = 0
+    last_switch_update: float = 0.0
+
+    # X1 life/odometer (configurable TPDO 0x482) + motor extras (0x483).
+    # All 0 until the TPDOs are mapped in SmartView.
+    odometer_km: float = 0.0
+    key_on_hours: int = 0
+    service_hours: int = 0
+    motor_op_hours: int = 0
+    motor_iq: float = 0.0
+    motor_speed_ref: int = 0
+    node_dc_current: float = 0.0
+
+    @property
+    def odometer_mi(self) -> float:
+        return self.odometer_km * 0.621371
 
     # Onboard charger (TSM2500, decoded from CAN 0x18EB2440 while charging)
     charge_voltage: float = 0.0
@@ -171,6 +264,20 @@ class VehicleState:
             "precharging": self.precharging,
             "overtemp": self.overtemp,
             "park_brake": self.park_brake,
+            "key_undervoltage": self.key_undervoltage,
+            "has_fault": self.has_fault,
+            "key_switch_voltage": round(self.key_switch_voltage, 2),
+            "key_voltage_live": (time.time() - self.last_key_voltage_update) < 5.0,
+            "switch_states_raw": self.switch_states,
+            "switch_states_live": (time.time() - self.last_switch_update) < 5.0,
+            "odometer_km": round(self.odometer_km, 1),
+            "odometer_mi": round(self.odometer_mi, 1),
+            "key_on_hours": self.key_on_hours,
+            "service_hours": self.service_hours,
+            "motor_op_hours": self.motor_op_hours,
+            "motor_iq": round(self.motor_iq, 1),
+            "motor_speed_ref": self.motor_speed_ref,
+            "node_dc_current": round(self.node_dc_current, 1),
             "fault_code": self.fault_code,
             "fault_level": self.fault_level,
             "fault_level_str": self.fault_level_str,
@@ -185,6 +292,12 @@ class VehicleState:
             "discharge_voltage_limit": round(self.discharge_voltage_limit, 1),
             "bms_fault_flags": self.bms_fault_flags,
             "bms_status_flags": self.bms_status_flags,
+            "bms_fault_flags_2": self.bms_fault_flags_2,
+            "bms_status_flags_2": self.bms_status_flags_2,
+            # Diagnostics: raw + decoded flag words
+            "system_flags_raw": self.system_flags,
+            "system_flags_decoded": self.system_flags_decoded,
+            "motor_flags": self.motor_flags,
             # Charger (TSM2500)
             "charge_voltage": round(self.charge_voltage, 1),
             "charge_current": round(self.charge_current, 1),

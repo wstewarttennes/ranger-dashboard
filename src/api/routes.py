@@ -12,6 +12,16 @@ def get_state() -> VehicleState:
     return VehicleState()
 
 
+def get_can_monitor():
+    """Overridden by main.py to return the live CanMonitor."""
+    return None
+
+
+def get_telemetry():
+    """Overridden by main.py to return the live Telemetry."""
+    return None
+
+
 @router.get("/api/state")
 async def api_state():
     return get_state().to_dict()
@@ -26,6 +36,41 @@ async def api_health():
         "comma_connected": state.comma_connected,
         "ws_clients": ws_manager.connection_count,
     }
+
+
+@router.get("/api/can/raw")
+async def api_can_raw():
+    """Live raw-CAN sniffer table for the Diagnostics view."""
+    mon = get_can_monitor()
+    if mon is None:
+        return {"frames": [], "buses": {}}
+    return {"frames": mon.snapshot(), "buses": mon.stats()}
+
+
+@router.get("/api/telemetry")
+async def api_telemetry():
+    t = get_telemetry()
+    return t.to_dict() if t else {}
+
+
+@router.get("/api/charge_sessions")
+async def api_charge_sessions():
+    t = get_telemetry()
+    return {"sessions": t.sessions if t else []}
+
+
+@router.get("/api/history")
+async def api_history():
+    t = get_telemetry()
+    return {"history": list(t.history) if t else []}
+
+
+@router.post("/api/trip/reset")
+async def api_trip_reset():
+    t = get_telemetry()
+    if t:
+        t.reset_trip()
+    return {"ok": True}
 
 
 @router.websocket("/ws")

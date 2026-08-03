@@ -55,6 +55,8 @@ rsync -avz --delete \
     --exclude 'ranger_dashboard.egg-info' \
     --exclude '.venv' \
     --exclude 'node_modules' \
+    --exclude '.env' \
+    --exclude 'data' \
     "$(dirname "$0")/" \
     "$PI_HOST:$REMOTE_DIR/"
 echo "Files synced"

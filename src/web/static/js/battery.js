@@ -23,17 +23,36 @@ function initBatteryGrid() {
 }
 
 function updateBattery(state) {
-    if (!gridInitialized) {
+    const grid = document.getElementById("cell-grid");
+    if (!grid) return;   // cell grid removed from the main dashboard (no per-cell data)
+    const summary = document.getElementById("battery-summary");
+    const voltages = state.cell_voltages || [];
+    const delta = state.cell_delta_mv;
+    const activeCount = voltages.filter(v => v > 0).length;
+
+    // No per-cell data on the CAN bus \u2014 show a graceful pack-level view instead
+    // of 42 empty boxes (per-cell voltages live on the MCU serial console).
+    if (activeCount === 0) {
+        summary.textContent = "per-cell not on CAN";
+        grid.classList.add("no-cells");
+        grid.innerHTML =
+            '<div class="cell-placeholder">' +
+              '<div class="cell-ph-soc">' + (state.soc_pct > 0 ? Math.round(state.soc_pct) + '%' : '--') + '</div>' +
+              '<div class="cell-ph-label">STATE OF CHARGE</div>' +
+              (state.pack_voltage > 0 ? '<div class="cell-ph-sub">Pack ' + state.pack_voltage.toFixed(1) + ' V</div>' : '') +
+              '<div class="cell-ph-note">Individual cell voltages aren\u2019t broadcast on CAN &mdash; ' +
+              'view in the MCU console (<code>show cells</code>) or enable a cell-broadcast service.</div>' +
+            '</div>';
+        gridInitialized = false;   // re-init the grid if cells ever start arriving
+        return;
+    }
+
+    if (!gridInitialized || grid.classList.contains("no-cells")) {
+        grid.classList.remove("no-cells");
         initBatteryGrid();
     }
 
-    const voltages = state.cell_voltages;
-    const minV = state.min_cell_v;
-    const maxV = state.max_cell_v;
-    const delta = state.cell_delta_mv;
-
     // Update summary
-    const activeCount = voltages.filter(v => v > 0).length;
     document.getElementById("battery-summary").textContent =
         `${activeCount} cells | \u0394 ${delta.toFixed(0)}mV`;
 

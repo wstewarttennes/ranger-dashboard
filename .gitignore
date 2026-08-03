@@ -21,3 +21,6 @@ capture/*.asc
 
 # OS
 .DS_Store
+
+# Local secrets
+.env

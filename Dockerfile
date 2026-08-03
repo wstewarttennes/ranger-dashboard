@@ -22,7 +22,8 @@ RUN pip install --no-cache-dir -e . 2>/dev/null || pip install --no-cache-dir \
     "pyyaml>=6.0" \
     "pydantic>=2.0" \
     "aiohttp>=3.9" \
-    "websockets>=12.0"
+    "websockets>=12.0" \
+    "paho-mqtt>=1.6,<2"
 
 # Copy dashboard code
 COPY . .

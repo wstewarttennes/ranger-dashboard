@@ -10,8 +10,12 @@ HYPER9_STATUS_ID = 0x181     # 385
 HYPER9_POWER_ID = 0x182      # 386
 HYPER9_MOTOR_ID = 0x183      # 387
 HYPER9_EXTENDED_ID = 0x184   # 388
+HYPER9_KEYVOLT_ID = 0x485    # 1157 — configurable TPDO1: Key Switch (12V) Voltage
+HYPER9_LIFE_ID = 0x482       # 1154 — configurable TPDO: odometer + service life
+HYPER9_MOTOR2_ID = 0x483     # 1155 — configurable TPDO: motor op hours + extras
 
-HYPER9_IDS = {HYPER9_STATUS_ID, HYPER9_POWER_ID, HYPER9_MOTOR_ID, HYPER9_EXTENDED_ID}
+HYPER9_IDS = {HYPER9_STATUS_ID, HYPER9_POWER_ID, HYPER9_MOTOR_ID,
+              HYPER9_EXTENDED_ID, HYPER9_KEYVOLT_ID, HYPER9_LIFE_ID, HYPER9_MOTOR2_ID}
 
 # Motor RPM -> road speed (km/h). The X1's own Vehicle Speed output is
 # uncalibrated, so we compute speed from RPM instead. Default assumes the
@@ -59,4 +63,32 @@ def update_vehicle_state(state: VehicleState, arbitration_id: int, signals: dict
     elif arbitration_id == HYPER9_EXTENDED_ID:
         state.fault_level = int(signals.get("FAULT_LEVEL", 0))
         state.motor_flags = int(signals.get("MOTOR_FLAGS", 0))
+        state.last_can_update = time.time()
+
+    elif arbitration_id == HYPER9_KEYVOLT_ID:
+        # Configurable TPDO mapping the X1's Key Switch (12V supply) Voltage
+        # (slot 1) and the digital-input/switch states word (slot 2, carries
+        # the F/R selector position). Only present once mapped in SmartView;
+        # until then this frame never arrives and both stay 0.
+        state.key_switch_voltage = signals.get("KEY_SWITCH_VOLTAGE", 0.0)
+        state.last_key_voltage_update = time.time()
+        state.switch_states = int(signals.get("SWITCH_STATES", 0))
+        state.last_switch_update = time.time()
+        state.last_can_update = time.time()
+
+    elif arbitration_id == HYPER9_LIFE_ID:
+        # Odometer is a 32-bit value split across two words (Dam = dekameters).
+        hi = int(signals.get("ODO_HIGH", 0))
+        lo = int(signals.get("ODO_LOW", 0))
+        odo_dam = (hi << 16) | lo          # dekameters (10 m units)
+        state.odometer_km = round(odo_dam / 100.0, 1)   # 1 Dam = 0.01 km
+        state.key_on_hours = int(signals.get("KEY_ON_HOURS", 0))
+        state.service_hours = int(signals.get("SERVICE_HOURS", 0))
+        state.last_can_update = time.time()
+
+    elif arbitration_id == HYPER9_MOTOR2_ID:
+        state.motor_op_hours = int(signals.get("MOTOR_OP_HOURS", 0))
+        state.motor_iq = signals.get("MOTOR_IQ", 0.0)
+        state.motor_speed_ref = int(signals.get("MOTOR_SPEED_REF", 0))
+        state.node_dc_current = signals.get("NODE_DC_CURRENT", 0.0)
         state.last_can_update = time.time()

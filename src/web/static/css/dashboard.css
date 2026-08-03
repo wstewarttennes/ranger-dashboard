@@ -37,7 +37,9 @@ body {
     border-bottom: 1px solid var(--border);
     padding: 0 8px;
     gap: 2px;
+    overflow-x: auto;
 }
+.tab { flex: 0 0 auto; }
 
 .tab {
     padding: 4px 16px;
@@ -85,7 +87,7 @@ body {
 /* ===== Dashboard view ===== */
 .dashboard {
     display: grid;
-    grid-template-rows: 2fr 1fr 1.2fr auto;
+    grid-template-rows: 1.7fr 1fr auto;
     height: 100%;
     gap: 4px;
     padding: 4px;
@@ -121,11 +123,45 @@ body {
     margin-top: 2px;
 }
 
-.speed-panel .gauge-label {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--accent-green);
-    margin-top: 4px;
+/* Sliding gear selector (R / N / D) */
+.gear-selector {
+    position: relative;
+    display: flex;
+    width: 150px;
+    max-width: 90%;
+    margin-top: 12px;
+    padding: 3px;
+    background: var(--bg-stat);
+    border-radius: 999px;
+    border: 1px solid var(--border);
+}
+
+.gear-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / 3);
+    height: calc(100% - 6px);
+    border-radius: 999px;
+    background: var(--text-secondary);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1), background 0.28s;
+    z-index: 0;
+}
+
+.gear-opt {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    z-index: 1;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.gear-opt.active {
+    color: var(--bg-primary);
 }
 
 .power-panel .power-value {
@@ -264,6 +300,15 @@ body {
 .cell.warn { background: #3d3000; color: var(--accent-yellow); }
 .cell.bad { background: #3d0000; color: var(--accent-red); }
 
+/* When no per-cell data is on the bus, the grid holds a pack-level placeholder */
+.cell-grid.no-cells { display: flex; align-items: center; justify-content: center; }
+.cell-placeholder { text-align: center; padding: 8px 16px; }
+.cell-ph-soc { font-size: 2.6rem; font-weight: 700; color: var(--accent-green); line-height: 1; }
+.cell-ph-label { font-size: 0.7rem; color: var(--text-secondary); letter-spacing: 1px; margin-top: 2px; }
+.cell-ph-sub { font-size: 1rem; font-weight: 600; margin-top: 6px; }
+.cell-ph-note { font-size: 0.65rem; color: var(--text-secondary); max-width: 420px; margin: 8px auto 0; line-height: 1.4; }
+.cell-ph-note code { background: var(--bg-stat); padding: 1px 4px; border-radius: 3px; }
+
 /* Status bar */
 .status-bar {
     display: flex;
@@ -287,6 +332,80 @@ body {
     background: var(--accent-green);
 }
 
+.status-spacer { flex: 1; }
+.dcdc-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 10px;
+    background: var(--bg-stat);
+    color: var(--text-secondary);
+}
+.dcdc-badge.ok { background: #0d3320; color: var(--accent-green); }
+.dcdc-badge.low { background: #3d0000; color: var(--accent-red); }
+
+/* ===== Energy tab ===== */
+.trip-reset { float: right; padding: 4px 12px; font-size: 0.75rem; }
+.charge-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+.charge-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.charge-kwh { color: var(--accent-green); font-weight: 700; font-size: 1.1rem; }
+.charge-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.graph-block {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+.graph-title { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px; }
+.graph { width: 100%; }
+
+/* ===== Web app tabs (Goblin / CityFlavor) ===== */
+.app-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding: 0 12px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+}
+.app-title { font-weight: 600; }
+.app-btn {
+    padding: 6px 14px;
+    background: var(--bg-stat);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.app-btn:active { opacity: 0.7; }
+.app-frame {
+    width: 100%;
+    height: calc(100vh - var(--tab-height) - 40px);
+    border: none;
+    background: #fff;
+}
+
 /* ===== Terminal view ===== */
 .terminal-container {
     height: 100%;
@@ -304,13 +423,44 @@ body {
 }
 
 /* ===== Browser view ===== */
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 52px;
+    padding: 0 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+}
+.browser-home-btn, .browser-go-btn {
+    padding: 8px 16px;
+    background: var(--accent-blue);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+.browser-home-btn { background: #333; }
+.browser-toolbar .browser-url-input { flex: 1; margin: 0; }
+.browser-frame {
+    width: 100%;
+    height: calc(100vh - var(--tab-height) - 52px);
+    border: none;
+    background: #fff;
+}
+.browser-frame.hidden { display: none; }
+
 .browser-placeholder {
-    height: 100%;
+    height: calc(100vh - var(--tab-height) - 52px);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
 }
+.browser-placeholder.hidden { display: none; }
 
 .browser-links {
     max-width: 600px;
@@ -401,6 +551,204 @@ body {
     font-size: 0.7rem;
     color: var(--text-secondary);
     text-align: center;
+}
+
+/* ===== Gear LOCKED (while charging) ===== */
+.gear-selector.locked .gear-knob { opacity: 0; }
+.gear-selector.locked .gear-opt { opacity: 0.15; }
+.gear-lock {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--accent-yellow);
+    border-radius: 999px;
+    background: rgba(255, 214, 0, 0.12);
+}
+.gear-lock.hidden { display: none; }
+
+/* ===== Charge progress bar (dashboard charge panel) ===== */
+.charge-progress {
+    height: 6px;
+    background: var(--bg-stat);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 6px;
+    display: none;
+}
+.charge-progress.active { display: block; }
+.charge-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-green);
+    border-radius: 3px;
+    transition: width 0.4s;
+}
+
+/* ===== Diagnostics view ===== */
+.subtab-bar {
+    display: flex;
+    gap: 2px;
+    height: 40px;
+    padding: 0 8px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+}
+.subtab {
+    padding: 4px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+.subtab.active { color: var(--text-primary); border-bottom-color: var(--accent-blue); }
+.subtab:active { opacity: 0.7; }
+
+.subview-wrap {
+    height: calc(100vh - var(--tab-height) - 40px);
+    overflow-y: auto;
+    padding: 10px;
+}
+.subview { display: none; }
+.subview.active { display: block; }
+
+.diag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px;
+}
+.diag-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+.diag-k { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+.diag-v { font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.diag-v.ok { color: var(--accent-green); }
+
+.diag-section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin: 16px 0 8px;
+}
+
+/* Flag chips */
+.chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--bg-stat);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    opacity: 0.55;
+}
+.chip.on { opacity: 1; color: #0a0a0f; }
+.chip.on.good { background: var(--accent-green); border-color: var(--accent-green); }
+.chip.on.info { background: var(--accent-blue); border-color: var(--accent-blue); }
+.chip.on.warn { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+
+/* Cell temps */
+.celltemp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 4px;
+}
+.celltemp {
+    background: var(--bg-stat);
+    border-radius: 4px;
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 0.7rem;
+}
+.celltemp span { display: block; color: var(--text-secondary); font-size: 0.6rem; }
+.celltemp b { font-size: 0.95rem; }
+
+/* Charger hero card */
+.charge-hero {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+.charge-hero-status { font-size: 1.3rem; font-weight: 700; color: var(--text-secondary); }
+.charge-hero-status.charging { color: var(--accent-green); }
+.charge-hero-power { font-size: 2.4rem; font-weight: 700; margin: 4px 0; }
+.charge-hero-soc {
+    position: relative;
+    height: 22px;
+    background: var(--bg-stat);
+    border-radius: 11px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.charge-hero-soc-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: var(--accent-green);
+    transition: width 0.5s;
+}
+.charge-hero-soc span { position: relative; font-weight: 700; font-size: 0.85rem; z-index: 1; }
+
+/* Raw CAN sniffer */
+.canraw-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 4px 2px 10px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.canraw-bus b { color: var(--accent-green); }
+.canraw-table-wrap { overflow-x: auto; }
+.canraw-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.canraw-table th {
+    text-align: left;
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+}
+.canraw-table td { padding: 4px 8px; border-bottom: 1px solid var(--bg-stat); }
+.canraw-table .mono { font-family: monospace; }
+.canraw-table .data { color: var(--accent-blue); letter-spacing: 0.5px; }
+.canraw-table .ext { color: var(--accent-orange); font-size: 0.6rem; vertical-align: super; }
+.canraw-table tr.stale { opacity: 0.4; }
+
+/* Home Assistant tab title */
+.ha-title { font-weight: 600; white-space: nowrap; padding: 0 6px; }
+.browser-links code {
+    background: var(--bg-stat);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.9em;
 }
 
 /* Fault banner — thin bold-red bar pinned to the top; leaves gauges visible */
