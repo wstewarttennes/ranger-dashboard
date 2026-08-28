@@ -46,10 +46,14 @@ BO_ 1155 HYPER9_MOTOR2: 8 HYPER9
   SG_ MOTOR_SPEED_REF : 32|16@1- (1,0) [-32768|32767] "rpm" PANDA
   SG_ NODE_DC_CURRENT : 48|16@1- (0.1,0) [-3276.8|3276.7] "A" PANDA
 
+BO_ 641 HYPER9_ANALOG: 8 HYPER9
+  SG_ THROTTLE_POT : 32|8@1- (1,0) [-100|100] "%" PANDA
+
 CM_ BO_ 385 "TPDO 1: Primary vehicle status (20ms rate)";
 CM_ BO_ 1157 "Configurable TPDO1 (0x485): slot1 Key Switch (12V supply) Voltage cV, slot2 digital-input/switch states bitfield (F/R selector — bit masks in config.yaml display.switch_*_mask, calibrated live)";
 CM_ BO_ 1154 "Configurable TPDO2 (0x482): odometer Hi/Lo (Dam), key-on hours, time-to-service hours";
 CM_ BO_ 1155 "Configurable TPDO3 (0x483): motor op hours, Iq (dA), speed ref, node DC current (dA)";
+CM_ BO_ 641 "CANopen TPDO2 (0x281): analog inputs. byte4 THROTTLE_POT = REAL analog pedal, SIGNED direct percent (-100..100). Positive = throttle (0..~100), negative = coast/regen overrun (e.g. 0xFF=-1). Parser clamps negatives to 0. Use this instead of 0x183 THROTTLE_REQUEST, which is only ever 0/80 (quantized flag). byte6 swings wide too — likely brake pedal analog (TBD).";
 CM_ BO_ 386 "TPDO 2: Power data (100ms rate)";
 CM_ BO_ 387 "TPDO 3: Motor data (50ms rate)";
 CM_ BO_ 388 "TPDO 4: Extended status (200ms rate)";
