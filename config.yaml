@@ -1,7 +1,7 @@
 # Ranger Dashboard Configuration
 
 server:
-  host: "0.0.0.0"
+  host: "0.0.0.0"          # binds all interfaces; Pi is on the LAN as ranger.lan (currently 192.168.1.196)
   port: 8088
 
 can:
@@ -62,8 +62,14 @@ display:
   update_rate: 20
   # Units: "metric" or "imperial"
   units: "imperial"
-  # Motor RPM -> road speed (km/h per rpm). Tune vs GPS: multiply by
-  # (actual_speed / displayed_speed). Restart container after editing.
+  # Motor RPM -> road speed (km/h per rpm), a SINGLE constant -> only correct in
+  # ONE gear. Measured 2026-08: in 4th the dash read ~30 mph while the X1's raw
+  # 0x181 speed read ~61 mph -- this constant makes 4th read ~half (0.0167 looks
+  # calibrated for a lower gear, ~2nd). The X1's own 0x181 is ALSO rpm-derived, so
+  # it has the same one-gear-only limitation. Real fix = a gear-independent source
+  # (trans tailshaft VSS, or the comma's GPS) feeding true road speed; then derive
+  # the gear from rpm/speed. Until then, tune for your main gear:
+  # rpm_to_kmh * (actual_gps_speed / displayed_speed). Restart container after editing.
   rpm_to_kmh: 0.0167
   # F/R selector bit masks in the X1 switch-states word (0x485 slot 2).
   # 0 = uncalibrated -> gear derives from signed RPM (throttle-only).
