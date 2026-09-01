@@ -20,9 +20,14 @@ can:
     - "dbc/thunderstruck_mcu.dbc"
 
 comma:
-  # IP address of comma 4 on local network
-  # (found via mDNS as comma-fc20e606.lan; set a DHCP reservation so it stays put)
-  host: "192.168.1.55"
+  # comma 4 on the LAN. Use the mDNS hostname so it survives DHCP changes — the
+  # comma's IP moves around (seen .55, .220). Resolves via avahi/mDNS on the Pi.
+  # If the Pi can't resolve .local, set a DHCP reservation for the comma's MAC
+  # (0:a:f5:7d:d3:e4) and hardcode that IP instead.
+  # webrtcd (port 5001) must be RUNNING on the comma or this shows "comma not found":
+  #   ssh comma@<comma>  ->  cd /data/openpilot &&
+  #   PYTHONPATH=/data/openpilot /usr/local/venv/bin/python system/webrtc/webrtcd.py &
+  host: "comma-fc20e606.local"
   port: 5001
   # Which cameras to request
   cameras:
