@@ -75,14 +75,31 @@ class VehicleState:
     dc_bus_current: float = 0.0
     motor_current: float = 0.0
 
+    # GPS speed from the comma (gear-independent). Set via POST /api/gps by the
+    # comma-side pusher (tools/comma_gps_pub.py). Preferred over speed_kmh, which
+    # is rpm-derived and only correct in ONE gear on the manual gearbox.
+    gps_speed_kmh: float = 0.0
+    gps_speed_ts: float = 0.0   # epoch of last GPS update
+    gps_fix: bool = False
+
     # Computed
     @property
     def power_kw(self) -> float:
         return self.dc_bus_voltage * self.dc_bus_current / 1000.0
 
     @property
+    def gps_fresh(self) -> bool:
+        """True when we have a recent GPS fix to trust over the rpm estimate."""
+        return self.gps_fix and (time.time() - self.gps_speed_ts) < 3.0
+
+    @property
+    def display_speed_kmh(self) -> float:
+        """Gear-independent GPS speed when fresh; else the rpm-derived fallback."""
+        return self.gps_speed_kmh if self.gps_fresh else self.speed_kmh
+
+    @property
     def speed_mph(self) -> float:
-        return self.speed_kmh * 0.621371
+        return self.display_speed_kmh * 0.621371
 
     # Direction/state from system flags
     system_flags: int = 0
@@ -246,8 +263,11 @@ class VehicleState:
         """Serialize to JSON-friendly dict for WebSocket broadcast."""
         return {
             # Motor
-            "speed_kmh": round(self.speed_kmh, 1),
+            "speed_kmh": round(self.display_speed_kmh, 1),
             "speed_mph": round(self.speed_mph, 1),
+            "speed_source": "gps" if self.gps_fresh else "motor",
+            "gps_speed_mph": round(self.gps_speed_kmh * 0.621371, 1),
+            "motor_speed_mph": round(self.speed_kmh * 0.621371, 1),
             "motor_rpm": self.motor_rpm,
             "motor_temp_c": round(self.motor_temp_c, 1),
             "inverter_temp_c": round(self.inverter_temp_c, 1),

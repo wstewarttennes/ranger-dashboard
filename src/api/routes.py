@@ -1,4 +1,6 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import time
+
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
 from src.api.websocket import WebSocketManager
 from src.state.vehicle import VehicleState
@@ -25,6 +27,21 @@ def get_telemetry():
 @router.get("/api/state")
 async def api_state():
     return get_state().to_dict()
+
+
+@router.post("/api/gps")
+async def api_gps(request: Request):
+    """Gear-independent GPS speed pushed from the comma (tools/comma_gps_pub.py).
+
+    Body: {"speed_ms": <float>, "fix": <bool>}. Stored on the live state and used
+    as the displayed speed while fresh (see VehicleState.display_speed_kmh).
+    """
+    data = await request.json()
+    st = get_state()
+    st.gps_speed_kmh = float(data.get("speed_ms", 0.0)) * 3.6
+    st.gps_fix = bool(data.get("fix", True))
+    st.gps_speed_ts = time.time()
+    return {"ok": True, "gps_speed_kmh": round(st.gps_speed_kmh, 1)}
 
 
 @router.get("/api/health")
